@@ -87,7 +87,7 @@ attendance_app/
 ├── db.py
 ├── queries.py
 ├── setup_db.sql
-├── seed_demo_academic_data.sql
+├── seed_demo_students.sql
 ├── requirements.txt
 └── README.md
 ```
@@ -130,8 +130,8 @@ pip install -r requirements.txt
 
 - Ensure Oracle Database is installed and running.
 - Configure the database connection credentials securely.
-- For a fresh database, execute `setup_db.sql` to create the schema and seed demo data.
-- For an existing database, connect as the app's Oracle user and run `@seed_demo_academic_data.sql` from the project directory. It adds the demo students, semester subjects, enrollments, attendance, leave balances, and sample leave applications without dropping tables; it can be safely rerun.
+- Execute the SQL commands in `setup_db.sql` to create the required database objects.
+- To add sample students to an existing database without dropping tables, connect as the app's Oracle user and run `@seed_demo_students.sql` from the project directory. It adds two sample students per semester (1-8) and can be safely rerun.
 
 ### 6. Run the Application
 
@@ -153,10 +153,10 @@ Add screenshots of your application below to demonstrate its interface and funct
 ![Dashboard](./screenshots/dashboard.png)
 
 ### Leave Management
-![Leave Management](screenshots/leave.png)
+![Leave Management](./screenshots/leave.png)
 
 ### Analytics
-![Analytics](screenshots/analytics.png)
+![Analytics](./screenshots/analytics.png)
 
 *Note: Add the corresponding screenshot images to a `screenshots/` folder in your repository.*
 
