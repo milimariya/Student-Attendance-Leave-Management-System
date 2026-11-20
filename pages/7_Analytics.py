@@ -113,8 +113,13 @@ with tab_dept:
 
         with c_d2:
             st.markdown("##### Students per Semester")
-            sem_counts = stu_all["sem"].value_counts().sort_index().reset_index()
+            stu_all["semester_number"] = stu_all["sem"].map(db.parse_student_semester)
+            sem_counts = (
+                stu_all.dropna(subset=["semester_number"])["semester_number"]
+                .value_counts()
+                .sort_index()
+                .reset_index()
+            )
             sem_counts.columns = ["Semester", "Student Count"]
             sem_counts["Semester"] = "Sem " + sem_counts["Semester"].astype(str)
             st.bar_chart(sem_counts.set_index("Semester"))
-

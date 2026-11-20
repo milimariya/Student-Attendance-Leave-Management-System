@@ -158,6 +158,16 @@ def _format_literal(val: Any) -> str:
     return "'" + str(val).replace("'", "''") + "'"
 
 
+def parse_student_semester(value: Any) -> Optional[int]:
+    """Parse semester values stored as either numbers, digit strings, or labels like 'S5'."""
+    match = re.search(r"\d+", str(value))
+    if not match:
+        return None
+
+    semester = int(match.group())
+    return semester if 1 <= semester <= 8 else None
+
+
 def run_sqlplus_command(input_sql: str, timeout: int = 30) -> Tuple[int, str, str]:
     """Pipe a script into sqlplus -S -L and return (returncode, stdout, stderr)."""
     creds = get_db_credentials()

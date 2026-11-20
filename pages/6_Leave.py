@@ -134,7 +134,7 @@ with tab_apply:
 
                     params = {
                         "lid": next_lid,
-                        "sid": sel_sid,
+                        "sid": bal_df.iloc[0]["sid"] if not bal_df.empty else sel_sid,
                         "ldate": leave_dt,
                         "reason": reason.strip()
                     }
@@ -228,4 +228,3 @@ with tab_history:
             use_container_width=True,
             hide_index=True
         )
-

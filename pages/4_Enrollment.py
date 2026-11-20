@@ -80,26 +80,38 @@ with tab_enroll:
             f"{row['sname']} ({row['sid']}) - Sem {row['sem']}": row['sid']
             for _, row in stu_df.iterrows()
         }
-        sub_opts = {
-            f"{row['subid']} - {row['subname']} (Sem {row['sem']})": row['subid']
-            for _, row in sub_df.iterrows()
-        }
 
-        with st.form("form_enroll_student", clear_on_submit=True):
-            col_s, col_sub = st.columns(2)
-            with col_s:
-                sel_stu_label = st.selectbox("Select Student", list(stu_opts.keys()))
-            with col_sub:
-                sel_sub_label = st.selectbox("Select Subject", list(sub_opts.keys()))
+        sel_stu_label = st.selectbox("Select Student", list(stu_opts.keys()))
+        sid_val = stu_opts[sel_stu_label]
+        student_sem = db.parse_student_semester(
+            stu_df.loc[stu_df["sid"] == sid_val, "sem"].iloc[0]
+        )
+        semester_subjects = sub_df.iloc[0:0]
 
-            enroll_date = st.date_input("Enrollment Date", value=date.today())
+        if student_sem is None:
+            st.error(f"Student {sid_val} has an invalid semester and cannot be enrolled.")
+        else:
+            subject_semesters = sub_df["sem"].map(db.parse_student_semester)
+            semester_subjects = sub_df[subject_semesters == student_sem]
 
-            submitted = st.form_submit_button("Enroll Student", use_container_width=True)
+        if student_sem is not None and semester_subjects.empty:
+            st.warning(
+                f"No subjects are available for semester {student_sem}. "
+                "Add a subject for this semester before enrolling the student."
+            )
+        elif student_sem is not None:
+            sub_opts = {
+                f"{row['subid']} - {row['subname']} (Sem {row['sem']})": row['subid']
+                for _, row in semester_subjects.iterrows()
+            }
+            sel_sub_label = st.selectbox("Select Subject", list(sub_opts.keys()))
+            subid_val = sub_opts[sel_sub_label]
+
+            with st.form("form_enroll_student", clear_on_submit=True):
+                enroll_date = st.date_input("Enrollment Date", value=date.today())
+                submitted = st.form_submit_button("Enroll Student", use_container_width=True)
 
             if submitted:
-                sid_val = stu_opts[sel_stu_label]
-                subid_val = sub_opts[sel_sub_label]
-
                 # Check duplicate
                 check_df = db.run_query(queries.CHECK_ENROLLMENT_EXISTS, {"sid": sid_val, "subid": subid_val})
                 if not check_df.empty and check_df.iloc[0]["cnt"] > 0:
@@ -145,4 +157,3 @@ with tab_unenroll:
                 st.rerun()
             else:
                 st.error(f"Failed to unenroll: {err}")
-

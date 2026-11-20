@@ -57,42 +57,41 @@ GET_NEXT_FACULTY_ID = """
 # 2. STUDENT QUERIES
 # ==============================================================================
 GET_ALL_STUDENTS = """
-    SELECT sid, sname, email, phone, dept, sem
+    SELECT sid, sname, dept, sem, cgpa
     FROM student
     ORDER BY sid ASC
 """
 
 GET_STUDENTS_ORDERED_BY_NAME = """
-    SELECT sid, sname, email, phone, dept, sem
+    SELECT sid, sname, dept, sem, cgpa
     FROM student
     ORDER BY sname ASC
 """
 
 SEARCH_STUDENTS_BY_NAME = """
-    SELECT sid, sname, email, phone, dept, sem
+    SELECT sid, sname, dept, sem, cgpa
     FROM student
     WHERE LOWER(sname) LIKE LOWER(:term)
     ORDER BY sname ASC
 """
 
 GET_STUDENT_BY_ID = """
-    SELECT sid, sname, email, phone, dept, sem
+    SELECT sid, sname, dept, sem, cgpa
     FROM student
     WHERE sid = :sid
 """
 
 INSERT_STUDENT = """
-    INSERT INTO student (sid, sname, email, phone, dept, sem)
-    VALUES (:sid, :sname, :email, :phone, :dept, :sem)
+    INSERT INTO student (sid, sname, dept, sem, cgpa)
+    VALUES (:sid, :sname, :dept, :sem, :cgpa)
 """
 
 UPDATE_STUDENT = """
     UPDATE student
     SET sname = :sname,
-        email = :email,
-        phone = :phone,
         dept = :dept,
-        sem = :sem
+        sem = :sem,
+        cgpa = :cgpa
     WHERE sid = :sid
 """
 
@@ -142,15 +141,15 @@ DELETE_SUBJECT = """
 GET_ALL_ENROLLMENTS = """
     SELECT e.eid, e.sid, st.sname AS student_name, e.subid, sub.subname AS subject_name, e.edate
     FROM enrollment e
-    JOIN student st ON e.sid = st.sid
+    JOIN student st ON e.sid = TO_CHAR(st.sid)
     JOIN subject sub ON e.subid = sub.subid
     ORDER BY e.eid DESC
 """
 
 GET_STUDENTS_ENROLLED_IN_SUBJECT = """
-    SELECT e.eid, e.sid, st.sname, st.email, st.dept, st.sem
+    SELECT e.eid, e.sid, st.sname, st.dept, st.sem
     FROM enrollment e
-    JOIN student st ON e.sid = st.sid
+    JOIN student st ON e.sid = TO_CHAR(st.sid)
     WHERE e.subid = :subid
     ORDER BY st.sname ASC
 """
@@ -158,7 +157,7 @@ GET_STUDENTS_ENROLLED_IN_SUBJECT = """
 CHECK_ENROLLMENT_EXISTS = """
     SELECT COUNT(*) AS cnt
     FROM enrollment
-    WHERE sid = :sid AND subid = :subid
+    WHERE sid = TO_CHAR(:sid) AND subid = :subid
 """
 
 INSERT_ENROLLMENT = """
@@ -181,7 +180,7 @@ GET_NEXT_ENROLLMENT_ID = """
 GET_ALL_ATTENDANCE = """
     SELECT a.aid, a.sid, s.sname AS student_name, a.subid, sub.subname AS subject_name, a.adate, a.status
     FROM attendance a
-    JOIN student s ON a.sid = s.sid
+    JOIN student s ON a.sid = TO_CHAR(s.sid)
     JOIN subject sub ON a.subid = sub.subid
     ORDER BY a.adate DESC, a.aid DESC
 """
@@ -189,7 +188,7 @@ GET_ALL_ATTENDANCE = """
 GET_ATTENDANCE_FILTERED = """
     SELECT a.aid, a.sid, s.sname AS student_name, a.subid, sub.subname AS subject_name, a.adate, a.status
     FROM attendance a
-    JOIN student s ON a.sid = s.sid
+    JOIN student s ON a.sid = TO_CHAR(s.sid)
     JOIN subject sub ON a.subid = sub.subid
     WHERE (:subid IS NULL OR a.subid = :subid)
       AND (:adate IS NULL OR TRUNC(a.adate) = TRUNC(:adate))
@@ -199,7 +198,9 @@ GET_ATTENDANCE_FILTERED = """
 CHECK_ATTENDANCE_EXISTS = """
     SELECT COUNT(*) AS cnt
     FROM attendance
-    WHERE sid = :sid AND subid = :subid AND TRUNC(adate) = TRUNC(:adate)
+    WHERE sid = TO_CHAR(:sid)
+      AND subid = :subid
+      AND TRUNC(adate) = TRUNC(:adate)
 """
 
 INSERT_ATTENDANCE = """
@@ -245,7 +246,7 @@ GET_LOW_ATTENDANCE_JOIN = """
                2
            ) AS attendance_percentage
     FROM student s
-    JOIN attendance a ON s.sid = a.sid
+    JOIN attendance a ON TO_CHAR(s.sid) = a.sid
     GROUP BY s.sid, s.sname, a.subid
     HAVING SUM(CASE WHEN LOWER(a.status) = 'present' THEN 1 ELSE 0 END)
            * 100 / COUNT(*) < 75
@@ -258,8 +259,9 @@ GET_LOW_ATTENDANCE_JOIN = """
 GET_PENDING_LEAVE_APPLICATIONS = """
     SELECT la.lid, la.sid, s.sname AS student_name, s.dept, la.ldate, la.reason, la.lstatus, lb.rem_leave
     FROM leave_application la
-    JOIN student s ON la.sid = s.sid
-    LEFT JOIN leave_balance lb ON la.sid = lb.sid
+    JOIN student s ON REGEXP_REPLACE(la.sid, '^S0*', '') = TO_CHAR(s.sid)
+    LEFT JOIN leave_balance lb
+        ON REGEXP_REPLACE(lb.sid, '^S0*', '') = TO_CHAR(s.sid)
     WHERE LOWER(la.lstatus) = 'pending'
     ORDER BY la.ldate ASC
 """
@@ -267,7 +269,7 @@ GET_PENDING_LEAVE_APPLICATIONS = """
 GET_ALL_LEAVE_APPLICATIONS = """
     SELECT la.lid, la.sid, s.sname AS student_name, la.ldate, la.reason, la.lstatus
     FROM leave_application la
-    JOIN student s ON la.sid = s.sid
+    JOIN student s ON REGEXP_REPLACE(la.sid, '^S0*', '') = TO_CHAR(s.sid)
     ORDER BY la.lid DESC
 """
 
@@ -290,14 +292,14 @@ GET_NEXT_LEAVE_APP_ID = """
 GET_ALL_LEAVE_BALANCES = """
     SELECT lb.bid, lb.sid, s.sname AS student_name, s.dept, lb.total_leave, lb.used_leave, lb.rem_leave
     FROM leave_balance lb
-    JOIN student s ON lb.sid = s.sid
+    JOIN student s ON REGEXP_REPLACE(lb.sid, '^S0*', '') = TO_CHAR(s.sid)
     ORDER BY s.sname ASC
 """
 
 GET_LEAVE_BALANCE_BY_STUDENT = """
     SELECT bid, sid, total_leave, used_leave, rem_leave
     FROM leave_balance
-    WHERE sid = :sid
+    WHERE sid IN (TO_CHAR(:sid), 'S' || LPAD(TO_CHAR(:sid), 3, '0'))
 """
 
 INSERT_LEAVE_BALANCE = """
@@ -310,7 +312,7 @@ UPDATE_LEAVE_BALANCE = """
     SET total_leave = :total_leave,
         used_leave = :used_leave,
         rem_leave = :rem_leave
-    WHERE sid = :sid
+    WHERE sid IN (TO_CHAR(:sid), 'S' || LPAD(TO_CHAR(:sid), 3, '0'))
 """
 
 GET_NEXT_LEAVE_BAL_ID = """
@@ -329,7 +331,7 @@ GET_CURSOR_LOW_ATTENDANCE = """
            SUM(CASE WHEN LOWER(a.status) = 'present' THEN 1 ELSE 0 END) AS attended_classes,
            COUNT(*) AS total_classes
     FROM attendance a
-    JOIN student s ON a.sid = s.sid
+    JOIN student s ON a.sid = TO_CHAR(s.sid)
     GROUP BY a.sid, s.sname
     HAVING SUM(CASE WHEN LOWER(a.status) = 'present' THEN 1 ELSE 0 END)
            * 100 / COUNT(*) < 75
@@ -366,4 +368,3 @@ GET_DASHBOARD_METRICS = {
         )
     """
 }
-

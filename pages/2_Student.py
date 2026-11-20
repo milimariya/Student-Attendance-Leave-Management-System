@@ -13,7 +13,7 @@ st.set_page_config(page_title="Student Directory", page_icon="👨‍🎓", layo
 db.render_sidebar()
 
 st.title("👨‍🎓 Student Management")
-st.markdown("Manage student admissions, profiles, semesters, and contact records.")
+st.markdown("Manage student profiles, departments, semesters, and CGPAs.")
 
 tab_view, tab_add, tab_edit = st.tabs(["📋 Student Directory", "➕ Register Student", "✏️ Edit / Delete"])
 
@@ -46,17 +46,16 @@ with tab_view:
     # Filter semester in memory if requested
     if not df.empty and sem_filter != "All Semesters":
         target_sem = int(sem_filter.split()[1])
-        df = df[df["sem"] == target_sem]
+        df = df[df["sem"].map(db.parse_student_semester) == target_sem]
 
     if not df.empty:
         st.dataframe(
             df.rename(columns={
                 "sid": "Student ID",
                 "sname": "Full Name",
-                "email": "Email Address",
-                "phone": "Phone Number",
                 "dept": "Department",
-                "sem": "Semester"
+                "sem": "Semester",
+                "cgpa": "CGPA"
             }),
             use_container_width=True,
             hide_index=True
@@ -74,15 +73,9 @@ with tab_add:
     with st.form("form_add_student", clear_on_submit=True):
         col_id, col_name = st.columns(2)
         with col_id:
-            s_id = st.text_input("Student ID (e.g. S005)", placeholder="S005")
+            s_id = st.text_input("Student ID (e.g. 37)", placeholder="37")
         with col_name:
             s_name = st.text_input("Full Name", placeholder="e.g. Maya Lin")
-
-        col_email, col_phone = st.columns(2)
-        with col_email:
-            s_email = st.text_input("Email", placeholder="maya.lin@univ.edu")
-        with col_phone:
-            s_phone = st.text_input("Phone Number", placeholder="9876543214")
 
         col_dept, col_sem = st.columns(2)
         with col_dept:
@@ -96,22 +89,22 @@ with tab_add:
             ])
         with col_sem:
             s_sem = st.number_input("Current Semester (1 - 8)", min_value=1, max_value=8, value=1, step=1)
+        s_cgpa = st.number_input("CGPA (0 - 10)", min_value=0.0, max_value=10.0, value=0.0, step=0.01, format="%.2f")
 
         init_balance = st.checkbox("Initialize Default Leave Balance (15 Days)", value=True)
         submitted = st.form_submit_button("Register Student", use_container_width=True)
 
         if submitted:
-            if not s_id.strip() or not s_name.strip() or not s_email.strip():
-                st.error("Student ID, Name, and Email are required.")
+            if not s_id.strip() or not s_name.strip():
+                st.error("Student ID and Name are required.")
             else:
                 s_id_clean = s_id.strip().upper()
                 params = {
                     "sid": s_id_clean,
                     "sname": s_name.strip(),
-                    "email": s_email.strip(),
-                    "phone": s_phone.strip(),
                     "dept": s_dept.strip(),
-                    "sem": int(s_sem)
+                    "sem": int(s_sem),
+                    "cgpa": float(s_cgpa)
                 }
                 ok, _, err = db.run_dml(queries.INSERT_STUDENT, params)
                 if ok:
@@ -158,8 +151,6 @@ with tab_edit:
                 st.markdown("#### Edit Profile Details")
                 with st.form("form_edit_student"):
                     e_name = st.text_input("Full Name", value=str(curr_row["sname"]))
-                    e_email = st.text_input("Email", value=str(curr_row["email"]))
-                    e_phone = st.text_input("Phone", value=str(curr_row["phone"] or ""))
 
                     dept_list = [
                         "Computer Science",
@@ -173,21 +164,33 @@ with tab_edit:
                     dept_idx = dept_list.index(cur_dept) if cur_dept in dept_list else 0
                     e_dept = st.selectbox("Department", dept_list, index=dept_idx)
 
+                    current_semester = db.parse_student_semester(curr_row["sem"])
+                    if current_semester is None:
+                        st.error(f"Cannot edit invalid semester value: {curr_row['sem']}")
+                        current_semester = 1
+
                     e_sem = st.number_input(
                         "Semester",
                         min_value=1,
                         max_value=8,
-                        value=int(curr_row["sem"]) if pd.notnull(curr_row["sem"]) else 1
+                        value=current_semester
+                    )
+                    e_cgpa = st.number_input(
+                        "CGPA",
+                        min_value=0.0,
+                        max_value=10.0,
+                        value=float(curr_row["cgpa"]) if pd.notnull(curr_row["cgpa"]) else 0.0,
+                        step=0.01,
+                        format="%.2f"
                     )
 
                     if st.form_submit_button("Update Student Profile", use_container_width=True):
                         update_params = {
                             "sid": selected_sid,
                             "sname": e_name.strip(),
-                            "email": e_email.strip(),
-                            "phone": e_phone.strip(),
                             "dept": e_dept.strip(),
-                            "sem": int(e_sem)
+                            "sem": int(e_sem),
+                            "cgpa": float(e_cgpa)
                         }
                         ok, _, _ = db.run_dml(queries.UPDATE_STUDENT, update_params)
                         if ok:
@@ -208,4 +211,3 @@ with tab_edit:
                         st.rerun()
                     else:
                         st.error(f"Cannot delete student: {err}")
-
