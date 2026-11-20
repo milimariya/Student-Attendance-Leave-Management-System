@@ -130,8 +130,6 @@ pip install -r requirements.txt
 
 - Ensure Oracle Database is installed and running.
 - Configure the database connection credentials securely.
-- Execute the SQL commands in `setup_db.sql` to create the required database objects.
-- To add sample students to an existing database without dropping tables, connect as the app's Oracle user and run `@seed_demo_students.sql` from the project directory. It adds two sample students per semester (1-8) and can be safely rerun.
 
 ### 6. Run the Application
 
@@ -147,7 +145,6 @@ http://localhost:8501
 
 ## 📸 Screenshots
 
-Add screenshots of your application below to demonstrate its interface and functionality.
 
 ### Dashboard
 ![Dashboard](./screenshots/dashboard.png)
