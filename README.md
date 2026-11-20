@@ -158,7 +158,6 @@ Add screenshots of your application below to demonstrate its interface and funct
 ### Analytics
 ![Analytics](./screenshots/analytics.png)
 
-*Note: Add the corresponding screenshot images to a `screenshots/` folder in your repository.*
 
 ## 🚀 Future Enhancements
 
